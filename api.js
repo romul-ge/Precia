@@ -10,10 +10,26 @@
 
   /* ═════════════ Settings ═════════════ */
 
-  // The address of your backend.
-  //   While testing on your computer:  'http://localhost:3000'
-  //   After publishing:                the real address, for example 'https://api.example.com'
-  const API_BASE = 'http://localhost:3000';
+  // Where the backend lives. The right one is picked automatically:
+  //   - page opened from a file on your computer, or from localhost  ->  the backend on this computer
+  //   - page published on the internet (GitHub Pages, Telegram)       ->  PUBLIC_API
+  const LOCAL_API = 'http://localhost:3000';
+
+  // CHANGE THIS before publishing: the public https address of your backend,
+  // for example your ngrok address 'https://your-name.ngrok-free.app' or 'https://api.example.com'.
+  const PUBLIC_API = 'https://YOUR-NAME.ngrok-free.app';
+
+  const onThisComputer = window.location.protocol === 'file:'
+    || window.location.hostname === 'localhost'
+    || window.location.hostname === '127.0.0.1';
+  const API_BASE = onThisComputer ? LOCAL_API : PUBLIC_API;
+
+  if (API_BASE.indexOf('YOUR-NAME') !== -1) {
+    console.error('api.js: set PUBLIC_API to the public address of your backend.');
+  }
+
+  // Free ngrok tunnels show a warning page to browsers; this header tells ngrok to skip it for our requests.
+  const EXTRA_HEADERS = /ngrok/i.test(API_BASE) ? { 'ngrok-skip-browser-warning': '1' } : {};
 
   const PREFIX = '/api/v1';
   const SESSION_KEY = 'recipeapp.session.v1';
@@ -74,7 +90,7 @@
   /* ═════════════ Low-level request ═════════════ */
 
   async function send(path, { method = 'GET', json, token, signal } = {}) {
-    const headers = {};
+    const headers = { ...EXTRA_HEADERS };
     if (json !== undefined) headers['Content-Type'] = 'application/json';
     if (token) headers.Authorization = 'Bearer ' + token;
 
@@ -167,6 +183,7 @@
       const xhr = new XMLHttpRequest();
       xhr.open('POST', API_BASE + PREFIX + path);
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      Object.keys(EXTRA_HEADERS).forEach(k => xhr.setRequestHeader(k, EXTRA_HEADERS[k]));
       xhr.responseType = 'json';
       xhr.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
       xhr.upload.onload = () => { if (onSent) onSent(); };   // all bytes sent, the server is now checking the file
