@@ -17,7 +17,7 @@
 
   // CHANGE THIS before publishing: the public https address of your backend,
   // for example your ngrok address 'https://your-name.ngrok-free.app' or 'https://api.example.com'.
-  const PUBLIC_API = 'https://YOUR-NAME.ngrok-free.app';
+  const PUBLIC_API = 'https://humongous-rogue-trimness.ngrok-free.dev';
 
   const onThisComputer = window.location.protocol === 'file:'
     || window.location.hostname === 'localhost'
