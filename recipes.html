@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#F3F4F2">
+<title>My Recipes</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Telegram Mini Apps SDK (ignored on a regular web page) -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  /* ───────────── Tokens (same as the other pages) ───────────── */
+  :root {
+    --bg:          #F3F4F2;
+    --surface:     #FFFFFF;
+    --ink:         #1B2421;
+    --ink-soft:    #3B4743;
+    --muted:       #6C7773;
+    --line:        #E2E5E1;
+    --line-strong: #C9CEC9;
+    --accent:      #2E5E4E;
+    --accent-ink:  #FFFFFF;
+    --accent-soft: #E3EDE8;
+    --danger:      #9B3B2E;
+
+    --font: "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    --page-pad: 16px;
+    --nav-h: 64px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* ───────────── Base ───────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body.locked { overflow: hidden; }
+
+  button, input { font: inherit; color: inherit; }
+  button { background: none; border: 0; padding: 0; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .icon {
+    width: 24px; height: 24px;
+    fill: none; stroke: currentColor;
+    stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+    flex: none;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: calc(var(--safe-top) + 16px) var(--page-pad)
+             calc(var(--nav-h) + var(--safe-bottom) + 40px);
+  }
+
+  /* ───────────── Header and add button ───────────── */
+  .top { display: flex; align-items: center; gap: 12px; }
+  .top h1 { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; }
+  .back {
+    display: grid; place-items: center;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    transition: border-color .18s ease, transform .12s ease;
+  }
+  .back .icon { width: 20px; height: 20px; }
+  .back:active { transform: scale(.94); }
+
+  .add {
+    margin-top: 20px;
+    width: 100%;
+    height: 52px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 15.5px;
+    letter-spacing: -0.005em;
+    transition: background-color .18s ease, transform .12s ease;
+  }
+  .add .icon { width: 20px; height: 20px; stroke-width: 2; }
+  .add:active { transform: scale(.985); }
+
+  /* ───────────── Search and sort ───────────── */
+  .toolbar { margin-top: 12px; }
+  .search {
+    display: flex; align-items: center; gap: 10px;
+    height: 46px;
+    padding: 0 8px 0 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    color: var(--muted);
+    transition: border-color .15s ease;
+  }
+  .search:focus-within { border-color: var(--accent); }
+  .search > .icon { width: 20px; height: 20px; }
+  .search input {
+    flex: 1; min-width: 0; height: 100%;
+    padding: 0; border: 0; outline: 0;
+    background: transparent; color: var(--ink);
+    font-size: 16px;
+    -webkit-appearance: none; appearance: none;
+  }
+  .search input::placeholder { color: #A2AAA6; }
+  .search input::-webkit-search-cancel-button,
+  .search input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+  .search__clear { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: var(--muted); }
+  .search__clear .icon { width: 16px; height: 16px; }
+
+  .chips {
+    display: flex; gap: 8px;
+    margin: 10px calc(var(--page-pad) * -1) 0;
+    padding: 2px var(--page-pad) 6px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding: 0 var(--page-pad);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--page-pad), #000 calc(100% - 28px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 var(--page-pad), #000 calc(100% - 28px), transparent 100%);
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; scroll-snap-align: start;
+    height: 38px; padding: 0 16px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 14px; font-weight: 500; white-space: nowrap;
+    user-select: none;
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .12s ease;
+  }
+  .chip:active { transform: scale(.97); }
+  .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  .count { margin: 14px 2px 10px; color: var(--muted); font-size: 13px; }
+
+  /* ───────────── Recipe cards (same as index.html) ───────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 160px;
+    gap: 12px;
+  }
+  .card {
+    position: relative; isolation: isolate;
+    display: flex; flex-direction: column; justify-content: space-between;
+    height: 160px;
+    padding: 14px;
+    overflow: hidden;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    transition: border-color .18s ease, transform .12s ease;
+  }
+  .card:active { transform: scale(.985); }
+  .card__top { display: flex; align-items: flex-start; justify-content: space-between; }
+  .card__mark {
+    display: grid; place-items: center;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .card__title {
+    margin: 0 0 6px;
+    font-size: 15px; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card__title mark, .suggest mark {
+    padding: 0 1px; border-radius: 4px;
+    background: var(--accent-soft); color: inherit;
+  }
+  .card__meta { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12.5px; }
+  .card__meta .time { display: inline-flex; align-items: center; gap: 5px; }
+  .card__meta .icon { width: 14px; height: 14px; stroke-width: 1.8; }
+
+  .fav {
+    display: grid; place-items: center;
+    width: 34px; height: 34px;
+    margin: -4px -4px 0 auto;
+    border-radius: 50%;
+    color: var(--muted);
+    transition: color .15s ease, transform .12s ease;
+  }
+  .fav .icon { width: 18px; height: 18px; }
+  .fav:active { transform: scale(.9); }
+  .fav[aria-pressed="true"] { color: var(--accent); }
+  .fav[aria-pressed="true"] .icon { fill: currentColor; }
+
+  .card__photo { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card__shade {
+    position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(180deg, rgba(27, 36, 33, .22) 0%, rgba(27, 36, 33, 0) 40%, rgba(27, 36, 33, .78) 100%);
+  }
+  .card--photo { border-color: transparent; background: var(--ink); color: #fff; }
+  .card--photo .card__mark { display: none; }
+  .card--photo .card__meta { color: rgba(255, 255, 255, .85); }
+  .card--photo .fav { background: rgba(255, 255, 255, .9); color: var(--ink-soft); }
+  .card--photo .fav[aria-pressed="true"] { color: var(--accent); }
+  .card:not(.card--photo) .card__photo,
+  .card:not(.card--photo) .card__shade { display: none; }
+
+  .card--skeleton {
+    pointer-events: none;
+    background: linear-gradient(90deg, #fff 0%, #F1F3F0 50%, #fff 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  /* empty / error states */
+  .empty {
+    display: flex; flex-direction: column; align-items: center;
+    margin-top: 12px;
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+  }
+  .empty__mark {
+    display: grid; place-items: center;
+    width: 48px; height: 48px; margin-bottom: 14px;
+    border-radius: 14px;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .empty strong { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 600; }
+  .empty .retry {
+    margin-top: 16px; height: 42px; padding: 0 20px;
+    border-radius: 999px; border: 1px solid var(--line-strong);
+    color: var(--ink); font-weight: 500;
+  }
+
+  /* ───────────── Sheets ───────────── */
+  .layer { position: fixed; inset: 0; z-index: 30; visibility: hidden; transition: visibility 0s .28s; }
+  .layer.open { visibility: visible; transition-delay: 0s; }
+  #layer-ing { z-index: 40; }
+
+  .scrim { position: absolute; inset: 0; background: rgba(27, 36, 33, .38); opacity: 0; transition: opacity .28s ease; }
+  .layer.open .scrim { opacity: 1; }
+
+  .sheet {
+    position: absolute; left: 50%; bottom: 0;
+    width: min(100%, 480px);
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 10px var(--page-pad) calc(var(--safe-bottom) + 16px);
+    background: var(--surface);
+    border-radius: 26px 26px 0 0;
+    transform: translate(-50%, 100%);
+    transition: transform .28s cubic-bezier(.2, .8, .2, 1);
+    outline: none;
+  }
+  .layer.open .sheet { transform: translate(-50%, 0); }
+
+  .sheet__grip { width: 36px; height: 4px; margin: 0 auto 14px; border-radius: 2px; background: var(--line-strong); }
+  .sheet__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sheet__head h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
+  .close { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--bg); color: var(--ink-soft); }
+  .close .icon { width: 18px; height: 18px; }
+
+  .field { display: block; margin-bottom: 18px; }
+  .field > label, .field > .label {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 6px;
+    color: var(--muted); font-size: 13px; font-weight: 500;
+  }
+  .field > label small, .field > .label small { font-weight: 400; color: #8D9692; }
+
+  .control {
+    display: flex; align-items: center;
+    height: 50px; padding: 0 14px;
+    background: #FAFBFA;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    transition: border-color .15s ease, background-color .15s ease;
+  }
+  .control:focus-within { border-color: var(--accent); background: #fff; }
+  .control input {
+    flex: 1; min-width: 0; height: 100%;
+    padding: 0; border: 0; outline: 0;
+    background: transparent;
+    font-size: 16px; /* 16px prevents zoom on iOS */
+  }
+  .control input::placeholder { color: #A2AAA6; }
+  .control .affix { color: var(--muted); }
+  .control .affix--pre { margin-right: 6px; }
+  .control .affix--post { margin-left: 6px; font-size: 14px; }
+
+  .error { min-height: 18px; margin: -6px 2px 10px; color: var(--danger); font-size: 13px; }
+
+  .save {
+    width: 100%; height: 52px;
+    border-radius: 16px;
+    background: var(--accent); color: var(--accent-ink);
+    font-weight: 600; font-size: 15.5px;
+    transition: background-color .18s ease, transform .12s ease, opacity .18s ease;
+  }
+  .save:active { transform: scale(.985); }
+  .save:disabled { opacity: .5; cursor: default; transform: none; }
+
+  .link { padding: 4px 0; color: var(--accent); font-weight: 500; font-size: 14px; }
+  .link--danger { color: var(--danger); }
+
+  /* photo block: one row, the left box swaps between icon, progress ring and thumbnail */
+  .photo {
+    display: flex; align-items: center; gap: 14px;
+    width: 100%; padding: 12px;
+    text-align: left;
+    background: #FAFBFA;
+    border: 1px dashed var(--line-strong);
+    border-radius: 18px;
+  }
+  .photo[data-state="busy"], .photo[data-state="done"], .photo[data-state="error"] {
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .photo__box {
+    position: relative; flex: none;
+    display: grid; place-items: center;
+    width: 72px; height: 72px;
+    border-radius: 16px; overflow: hidden;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .photo__box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo__box > .icon { width: 26px; height: 26px; }
+  .photo[data-state="error"] .photo__box { background: rgba(155, 59, 46, .1); color: var(--danger); }
+  .photo__text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .photo__title { font-weight: 600; }
+  .photo__sub { color: var(--muted); font-size: 13px; }
+  .photo__actions { display: flex; gap: 16px; margin-top: 4px; }
+
+  .ring { width: 46px; height: 46px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 3.5; }
+  .ring__bg { stroke: rgba(46, 94, 78, .18); }
+  .ring__fg {
+    stroke: var(--accent); stroke-linecap: round;
+    stroke-dasharray: 119.4; stroke-dashoffset: 119.4;
+    transition: stroke-dashoffset .2s linear;
+  }
+  .ring.spin { animation: spin 1s linear infinite; }
+  .ring.spin .ring__fg { stroke-dasharray: 30 90; stroke-dashoffset: 0; transition: none; }
+  @keyframes spin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+
+  /* ingredient rows */
+  .ings { display: flex; flex-direction: column; gap: 10px; }
+  .ing__line { display: flex; align-items: center; gap: 8px; }
+  .ing .control { height: 46px; }
+  .ing__name { flex: 1; min-width: 0; }
+  .ing__amount { flex: none; width: 92px; }
+  .ing__amount input { text-align: right; }
+  .ing__remove { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--muted); }
+  .ing__remove .icon { width: 16px; height: 16px; }
+
+  .suggest {
+    list-style: none; margin: 6px 0 0; padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 10px 24px -16px rgba(27, 36, 33, .4);
+  }
+  .suggest li {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 44px; padding: 0 10px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .suggest li.is-active { background: var(--bg); }
+  .suggest li.is-note { color: var(--muted); font-size: 14px; cursor: default; }
+  .suggest li.is-note[data-act] { cursor: pointer; color: var(--accent); }
+  .suggest li.is-new { justify-content: flex-start; gap: 8px; color: var(--accent); font-weight: 500; }
+  .suggest li.is-new .icon { width: 18px; height: 18px; stroke-width: 2; }
+  .s-price { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .ing__hint { margin: 5px 4px 0; color: var(--muted); font-size: 12.5px; }
+  .ing__hint .link { padding: 0; font-size: 12.5px; }
+
+  .textbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 10px; height: 40px; padding: 0 2px;
+    color: var(--accent); font-weight: 500;
+  }
+  .textbtn .icon { width: 18px; height: 18px; stroke-width: 2; }
+
+  /* new-ingredient sheet */
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; margin-bottom: 16px; background: var(--bg); border-radius: 14px; }
+  .seg__btn { height: 38px; border-radius: 11px; color: var(--muted); font-size: 14px; font-weight: 500; transition: background-color .18s ease, color .18s ease, box-shadow .18s ease; }
+  .seg__btn[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(27, 36, 33, .12); }
+  .unit { display: flex; gap: 2px; margin-left: 8px; padding: 3px; background: var(--bg); border-radius: 10px; }
+  .unit button { min-width: 36px; height: 30px; padding: 0 8px; border-radius: 8px; color: var(--muted); font-size: 14px; font-weight: 500; transition: background-color .18s ease, color .18s ease; }
+  .unit button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(27, 36, 33, .12); }
+  .calc { display: flex; align-items: baseline; justify-content: space-between; margin: 2px 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
+  .calc span:first-child { font-size: 13px; font-weight: 500; }
+  .calc strong { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%;
+    bottom: calc(var(--safe-bottom) + var(--nav-h) + 28px);
+    z-index: 50;
+    max-width: calc(100% - 32px);
+    padding: 11px 16px;
+    border-radius: 14px;
+    background: var(--ink); color: #fff; font-size: 14px;
+    opacity: 0; transform: translate(-50%, 8px);
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ───────────── Bottom navigation ───────────── */
+  .dock {
+    position: fixed; left: 50%;
+    bottom: calc(var(--safe-bottom) + 12px);
+    transform: translateX(-50%);
+    z-index: 10;
+    width: min(calc(100% - 32px), 400px);
+    height: var(--nav-h);
+    padding: 6px;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px;
+    background: rgba(255, 255, 255, .92);
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+            backdrop-filter: saturate(1.4) blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: 0 10px 30px -12px rgba(27, 36, 33, .28);
+  }
+  .dock__item {
+    height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    border-radius: 999px;
+    color: var(--muted); font-size: 11.5px; font-weight: 500;
+    transition: background-color .18s ease, color .18s ease;
+  }
+  .dock__item .icon { width: 22px; height: 22px; }
+  .dock__create {
+    height: 100%; padding: 0 22px 0 18px;
+    display: flex; align-items: center; gap: 8px;
+    border-radius: 999px;
+    background: var(--accent); color: var(--accent-ink);
+    font-size: 15px; font-weight: 600; letter-spacing: -0.005em;
+    transition: transform .12s ease, background-color .18s ease;
+  }
+  .dock__create .icon { width: 22px; height: 22px; stroke-width: 2; }
+  .dock__create:active { transform: scale(.96); }
+
+  @media (hover: hover) {
+    .back:hover { border-color: var(--line-strong); }
+    .add:hover { background: var(--ink-soft); }
+    .chip:hover:not([aria-pressed="true"]) { border-color: var(--line-strong); background: #FAFBFA; color: var(--ink); }
+    .chip[aria-pressed="true"]:hover { background: var(--ink-soft); border-color: var(--ink-soft); }
+    .card:hover { border-color: var(--line-strong); }
+    .card--photo:hover { border-color: transparent; }
+    .fav:hover { color: var(--accent); }
+    .search__clear:hover, .ing__remove:hover { background: var(--bg); color: var(--ink); }
+    .close:hover { background: var(--line); }
+    .suggest li:not(.is-note):hover { background: var(--bg); }
+    .seg__btn[aria-pressed="false"]:hover, .unit button[aria-pressed="false"]:hover { color: var(--ink); }
+    .save:not(:disabled):hover, .dock__create:hover { background: #264F42; }
+    .dock__item:hover { background: rgba(27, 36, 33, .05); color: var(--ink); }
+    .empty .retry:hover { border-color: var(--ink); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation-duration: 2s !important; }
+  }
+</style>
+</head>
+
+<body>
+
+<!-- Icon sprite (24×24 line icons, one stroke weight) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24">
+      <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+      <path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-dish" viewBox="0 0 24 24"><path d="M3 14h18a9 9 0 0 1-18 0z"/><path d="M12 5v2M8 7l.8 1.4M16 7l-.8 1.4"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  </defs>
+</svg>
+
+<main class="app">
+
+  <header class="top">
+    <button class="back" id="back" type="button" aria-label="Back">
+      <svg class="icon"><use href="#i-arrow-left"/></svg>
+    </button>
+    <h1>My Recipes</h1>
+  </header>
+
+  <button class="add" id="add" type="button">
+    <svg class="icon"><use href="#i-plus"/></svg>
+    <span>Add recipe</span>
+  </button>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <div class="search">
+      <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+      <input id="search" type="search" placeholder="Search recipes" aria-label="Search recipes"
+             autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+      <button class="search__clear" id="search-clear" type="button" aria-label="Clear search" hidden>
+        <svg class="icon"><use href="#i-x"/></svg>
+      </button>
+    </div>
+
+    <div class="chips" id="sort" role="group" aria-label="Sort recipes">
+      <button class="chip" type="button" data-sort="az" aria-pressed="true">A–Z</button>
+      <button class="chip" type="button" data-sort="new" aria-pressed="false">Newest first</button>
+      <button class="chip" type="button" data-sort="fav" aria-pressed="false">Favorites first</button>
+    </div>
+  </div>
+
+  <p class="count" id="count" aria-live="polite" hidden></p>
+
+  <div id="content"></div>
+
+</main>
+
+<!-- Create recipe sheet -->
+<div class="layer" id="layer">
+  <div class="scrim" id="scrim"></div>
+
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabindex="-1">
+    <div class="sheet__grip"></div>
+
+    <div class="sheet__head">
+      <h2 id="sheet-title">Add recipe</h2>
+      <button class="close" id="close" type="button" aria-label="Close">
+        <svg class="icon"><use href="#i-x"/></svg>
+      </button>
+    </div>
+
+    <form id="form" novalidate>
+      <!-- 1. Photo -->
+      <div class="field">
+        <span class="label">Photo <small>Optional</small></span>
+        <div id="photo-wrap"></div>
+        <input type="file" id="f-photo" accept="image/*" hidden>
+      </div>
+
+      <!-- 2. Name -->
+      <div class="field">
+        <label for="f-title">Recipe name</label>
+        <div class="control">
+          <input id="f-title" type="text" maxlength="80" placeholder="e.g. Chicken with vegetables" autocomplete="off" autocapitalize="sentences" enterkeyhint="next">
+        </div>
+      </div>
+
+      <!-- 3. Ingredients -->
+      <div class="field">
+        <span class="label">Ingredients <small>Amount in grams</small></span>
+        <div class="ings" id="ings"></div>
+        <button class="textbtn" id="ing-add" type="button">
+          <svg class="icon"><use href="#i-plus"/></svg>
+          <span>Add ingredient</span>
+        </button>
+      </div>
+
+      <p class="error" id="error" role="alert"></p>
+      <button class="save" id="save" type="submit">Save recipe</button>
+    </form>
+  </div>
+</div>
+
+<!-- New ingredient sheet (opens above the recipe sheet) -->
+<div class="layer" id="layer-ing">
+  <div class="scrim" id="scrim-ing"></div>
+
+  <div class="sheet" id="sheet-ing" role="dialog" aria-modal="true" aria-labelledby="sheet-ing-title" tabindex="-1">
+    <div class="sheet__grip"></div>
+
+    <div class="sheet__head">
+      <h2 id="sheet-ing-title">New ingredient</h2>
+      <button class="close" id="close-ing" type="button" aria-label="Close">
+        <svg class="icon"><use href="#i-x"/></svg>
+      </button>
+    </div>
+
+    <form id="form-ing" novalidate>
+      <div class="field">
+        <label for="n-name">Name</label>
+        <div class="control">
+          <input id="n-name" type="text" maxlength="60" placeholder="e.g. Chicken breast" autocomplete="off" autocapitalize="sentences">
+        </div>
+      </div>
+
+      <div class="seg" id="n-mode" role="group" aria-label="How to enter the price">
+        <button class="seg__btn" type="button" data-mode="pack" aria-pressed="true">Bought a pack</button>
+        <button class="seg__btn" type="button" data-mode="kg" aria-pressed="false">Price per kg</button>
+      </div>
+
+      <div id="n-pane-pack">
+        <div class="field">
+          <label for="n-weight">Weight bought</label>
+          <div class="control">
+            <input id="n-weight" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+            <div class="unit" id="n-unit" role="group" aria-label="Weight unit">
+              <button type="button" data-unit="g" aria-pressed="true">g</button>
+              <button type="button" data-unit="kg" aria-pressed="false">kg</button>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="n-paid">Amount paid</label>
+          <div class="control">
+            <span class="affix affix--pre cur-sym"></span>
+            <input id="n-paid" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
+          </div>
+        </div>
+        <div class="calc" aria-live="polite">
+          <span>Price per kg</span>
+          <strong id="n-calc">—</strong>
+        </div>
+      </div>
+
+      <div id="n-pane-kg" hidden>
+        <div class="field">
+          <label for="n-price">Price per kg</label>
+          <div class="control">
+            <span class="affix affix--pre cur-sym"></span>
+            <input id="n-price" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
+            <span class="affix affix--post">/ kg</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="error" id="n-error" role="alert"></p>
+      <button class="save" id="n-save" type="submit">Save ingredient</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Bottom navigation -->
+<nav class="dock" aria-label="Main menu">
+  <button class="dock__item" data-href="index.html">
+    <svg class="icon"><use href="#i-home"/></svg>
+    <span>Home</span>
+  </button>
+
+  <button class="dock__create" id="create">
+    <svg class="icon"><use href="#i-plus"/></svg>
+    <span>Create</span>
+  </button>
+
+  <button class="dock__item" data-view="profile">
+    <svg class="icon"><use href="#i-user"/></svg>
+    <span>Profile</span>
+  </button>
+</nav>
+
+<script src="api.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  if (!window.Api) {
+    document.body.innerHTML = '<p style="font:16px sans-serif;padding:24px">The file <b>api.js</b> was not found. Put it in the same folder as this page.</p>';
+    return;
+  }
+
+
+  /* ═════════════ Config ═════════════ */
+  // The server address is set at the top of api.js.
+
+  const CURRENCY = '$';
+  const HOME_URL = 'index.html';
+  const MAX_INPUT_PHOTO_MB = 30;   // reject absurdly large originals before even trying
+
+  /* ═════════════ Telegram ═════════════ */
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const inTelegram = !!(tg && tg.initData);
+  if (tg) {
+    try {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor && tg.setHeaderColor('#F3F4F2');
+      tg.setBackgroundColor && tg.setBackgroundColor('#F3F4F2');
+    } catch (_) {}
+  }
+  const haptic = kind => {
+    try {
+      if (!tg || !tg.HapticFeedback) return;
+      kind === 'success' ? tg.HapticFeedback.notificationOccurred('success') : tg.HapticFeedback.selectionChanged();
+    } catch (_) {}
+  };
+
+  const goHome = () => { window.location.href = HOME_URL; };
+  const backBtn = document.getElementById('back');
+  if (inTelegram && tg.BackButton) {
+    backBtn.hidden = true;
+    tg.BackButton.show();
+    tg.BackButton.onClick(goHome);
+  } else {
+    backBtn.addEventListener('click', goHome);
+  }
+
+  /* ═════════════ Helpers ═════════════ */
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const money = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const norm = s => String(s).trim().toLowerCase();
+  const num = str => { const t = String(str).replace(',', '.').trim(); return t === '' ? NaN : Number(t); };
+  const fmtNum = n => String(+n.toFixed(3));
+  const safeUrl = u => (/^(https?:|data:image\/|blob:|\/|\.\/)/i.test(u) || /^[\w.-]+\/[\w./%-]+$/.test(u)) ? u : '';
+  const byTitle = (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
+  const timestamp = r => { const t = new Date(r.createdAt).getTime(); return isFinite(t) ? t : 0; };
+
+  function highlight(text, q) {
+    const i = q ? text.toLowerCase().indexOf(q) : -1;
+    if (i === -1) return esc(text);
+    return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  /* ═════════════ Server access ═════════════
+     All requests go through window.Api (api.js): sign-in, tokens, retries and errors live there.
+     The two functions below turn what the server sends into the shapes this page works with.
+     If the server's field names ever change, adjust them here. */
+  const api = window.Api;
+
+  function normalizeRecipe(r) {
+    return {
+      id: String(r.id),
+      title: String(r.title == null ? '' : r.title),
+      img: r.img || '',
+      fav: !!r.fav,
+      createdAt: r.createdAt == null ? 0 : r.createdAt,
+      time: r.time == null ? null : r.time,
+      kcal: r.kcal == null ? null : r.kcal
+    };
+  }
+
+  function normalizeIngredient(i) {
+    return {
+      id: String(i.id),
+      name: String(i.name),
+      price: Number(i.price),
+      weight: i.weight == null ? null : Number(i.weight),
+      paid: i.paid == null ? null : Number(i.paid)
+    };
+  }
+
+  const errorText = (err, fallback) =>
+    (err && err.body && typeof err.body.error === 'string' && err.body.error) || fallback;
+
+  /* ═════════════ Image compression (runs on the phone before upload) ═════════════ */
+  async function compressImage(file, { maxSide = 1280, quality = 0.8 } = {}) {
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch (_) {
+      bitmap = await new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+        img.src = url;
+      });
+    }
+    const w0 = bitmap.width, h0 = bitmap.height;
+    const scale = Math.min(1, maxSide / Math.max(w0, h0));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(w0 * scale));
+    canvas.height = Math.max(1, Math.round(h0 * scale));
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    if (bitmap.close) bitmap.close();
+
+    const toBlob = type => new Promise(res => canvas.toBlob(res, type, quality));
+    let blob = await toBlob('image/webp');
+    if (!blob || blob.type !== 'image/webp') blob = await toBlob('image/jpeg');
+    if (!blob) throw new Error('encode');
+    return blob;
+  }
+
+  const fmtSize = bytes => bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+
+  /* ═════════════ Recipes list ═════════════ */
+  let recipes = [];
+  let status = 'loading';   // loading | ready | error
+  const view = { query: '', sort: 'az' };
+
+  const contentEl = $('content'), countEl = $('count'), toolbarEl = $('toolbar'),
+        searchEl = $('search'), clearBtn = $('search-clear');
+
+  const SORTERS = {
+    az:  byTitle,
+    new: (a, b) => timestamp(b) - timestamp(a) || byTitle(a, b),
+    fav: (a, b) => (Number(b.fav) - Number(a.fav)) || byTitle(a, b)
+  };
+
+  async function loadRecipes() {
+    status = 'loading';
+    render();
+    try {
+      recipes = (await api.listRecipes()).map(normalizeRecipe);
+      status = 'ready';
+    } catch (_) {
+      status = 'error';
+    }
+    render();
+  }
+
+  function cardHTML(r, q) {
+    const photoUrl = r.img ? safeUrl(r.img) : '';
+    const photo = photoUrl
+      ? `<img class="card__photo" src="${esc(photoUrl)}" alt="" loading="lazy" decoding="async"><span class="card__shade"></span>`
+      : '';
+    const time = r.time != null ? `<span class="time"><svg class="icon"><use href="#i-clock"/></svg>${esc(r.time)} min</span>` : '';
+    const kcal = r.kcal != null ? `<span>${esc(r.kcal)} kcal</span>` : '';
+    return `
+      <article class="card${photoUrl ? ' card--photo' : ''}" data-id="${esc(r.id)}" tabindex="0">
+        ${photo}
+        <div class="card__top">
+          <span class="card__mark" aria-hidden="true"><svg class="icon"><use href="#i-dish"/></svg></span>
+          <button class="fav" type="button" data-fav="${esc(r.id)}" aria-pressed="${r.fav}" aria-label="Add to favorites">
+            <svg class="icon"><use href="#i-heart"/></svg>
+          </button>
+        </div>
+        <div class="card__body">
+          <h3 class="card__title">${highlight(r.title, q)}</h3>
+          ${time || kcal ? `<div class="card__meta">${time}${kcal}</div>` : ''}
+        </div>
+      </article>`;
+  }
+
+  function stateBlock(icon, title, text, retry) {
+    return `
+      <div class="empty">
+        <span class="empty__mark"><svg class="icon"><use href="#${icon}"/></svg></span>
+        <strong>${title}</strong>${text}
+        ${retry ? '<button class="retry" type="button" data-retry>Try again</button>' : ''}
+      </div>`;
+  }
+
+  function render() {
+    if (status === 'loading') {
+      toolbarEl.hidden = true;
+      countEl.hidden = true;
+      contentEl.setAttribute('aria-busy', 'true');
+      contentEl.innerHTML = '<div class="grid" aria-hidden="true">' + '<div class="card card--skeleton"></div>'.repeat(4) + '</div>';
+      return;
+    }
+    contentEl.removeAttribute('aria-busy');
+
+    if (status === 'error') {
+      toolbarEl.hidden = true;
+      countEl.hidden = true;
+      contentEl.innerHTML = stateBlock('i-book', 'Couldn’t load recipes', 'Check your connection and try again.', true);
+      return;
+    }
+
+    const total = recipes.length;
+    const q = view.query.trim().toLowerCase();
+    const list = recipes.filter(r => !q || r.title.toLowerCase().includes(q)).sort(SORTERS[view.sort]);
+
+    toolbarEl.hidden = total === 0;
+    countEl.hidden = total === 0;
+    const noun = total === 1 ? ' recipe' : ' recipes';
+    countEl.textContent = q ? list.length + ' of ' + total + noun : total + noun;
+
+    if (!total) {
+      contentEl.innerHTML = stateBlock('i-book', 'No recipes yet', 'Tap “Add recipe” to create your first one.', false);
+    } else if (!list.length) {
+      contentEl.innerHTML = stateBlock('i-search', 'No matches', 'Nothing found for “' + esc(view.query.trim()) + '”. Try a shorter name.', false);
+    } else {
+      contentEl.innerHTML = '<div class="grid">' + list.map(r => cardHTML(r, q)).join('') + '</div>';
+    }
+  }
+
+  // a photo that fails to load quietly falls back to the text card
+  contentEl.addEventListener('error', e => {
+    const img = e.target;
+    if (!img.classList || !img.classList.contains('card__photo')) return;
+    const card = img.closest('.card');
+    if (card) card.classList.remove('card--photo');
+    img.remove();
+  }, true);
+
+  contentEl.addEventListener('click', async e => {
+    if (e.target.closest('[data-retry]')) { loadRecipes(); return; }
+
+    const favBtn = e.target.closest('[data-fav]');
+    if (favBtn) {
+      const r = recipes.find(x => x.id === favBtn.dataset.fav);
+      if (!r) return;
+      const next = !r.fav;
+      r.fav = next;                 // optimistic update
+      haptic();
+      render();
+      try {
+        await api.setFavorite(r.id, next);
+      } catch (_) {
+        r.fav = !next;              // roll back
+        render();
+        toast('Couldn’t update favorites. Try again.');
+      }
+      return;
+    }
+
+    const card = e.target.closest('.card[data-id]');
+    if (card) document.dispatchEvent(new CustomEvent('app:recipe-open', { detail: { id: card.dataset.id } }));
+  });
+  contentEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.matches('.card[data-id]')) {
+      document.dispatchEvent(new CustomEvent('app:recipe-open', { detail: { id: e.target.dataset.id } }));
+    }
+  });
+
+  /* search and sort */
+  function setQuery(value) {
+    view.query = value;
+    searchEl.value = value;
+    clearBtn.hidden = !value;
+    render();
+  }
+  searchEl.addEventListener('input', () => setQuery(searchEl.value));
+  searchEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') searchEl.blur();
+    if (e.key === 'Escape' && searchEl.value) setQuery('');
+  });
+  clearBtn.addEventListener('click', () => { setQuery(''); searchEl.focus(); });
+
+  $('sort').addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip || chip.dataset.sort === view.sort) return;
+    view.sort = chip.dataset.sort;
+    $('sort').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === chip)));
+    chip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    haptic();
+    render();
+  });
+
+  /* ═════════════ My Ingredients (source for the autocomplete) ═════════════ */
+  let ingredients = [];
+  let ingStatus = 'idle';   // idle | loading | ready | error
+
+  const findIngredient = text => { const t = norm(text); return t ? ingredients.find(i => norm(i.name) === t) : undefined; };
+  const ingById = id => ingredients.find(i => i.id === id);
+
+  async function loadIngredients() {
+    if (ingStatus === 'loading') return;
+    ingStatus = 'loading';
+    try {
+      ingredients = (await api.listIngredients()).map(normalizeIngredient);
+      ingStatus = 'ready';
+    } catch (_) {
+      ingStatus = 'error';
+    }
+    // rows typed before the list arrived: link them and refresh open suggestions
+    rows.forEach(row => {
+      const m = findIngredient(row.text);
+      row.id = m ? m.id : null;
+      isSuggestOpen(row) ? showSuggest(row) : updateHint(row);
+    });
+  }
+
+  /* ═════════════ Create sheet ═════════════ */
+  const layer = $('layer'), sheet = $('sheet'), titleEl = $('f-title'), errorEl = $('error'),
+        saveBtn = $('save'), ingsEl = $('ings');
+  let lastFocus = null;
+  let saving = false;
+  let recipeSaved = false;
+
+  function syncLock() {
+    document.body.classList.toggle('locked', layer.classList.contains('open') || layerIng.classList.contains('open'));
+  }
+  function updateSave() {
+    saveBtn.disabled = saving || photo.state === 'busy';
+    saveBtn.textContent = saving ? 'Saving…' : 'Save recipe';
+  }
+
+  /* ---- Photo: compress → upload with progress → server checks → thumbnail ---- */
+  const photo = { state: 'idle', phase: '', progress: 0, id: null, url: '', size: 0, message: '', controller: null };
+  let photoRun = 0;   // incremented to ignore results of cancelled or replaced uploads
+  const fileInput = $('f-photo'), photoWrap = $('photo-wrap');
+  const CAMERA = '<svg class="icon"><use href="#i-camera"/></svg>';
+
+  function renderPhoto() {
+    const s = photo.state;
+    if (s === 'idle') {
+      photoWrap.innerHTML = `
+        <button type="button" class="photo" data-act="pick">
+          <span class="photo__box">${CAMERA}</span>
+          <span class="photo__text">
+            <span class="photo__title">Add photo</span>
+            <span class="photo__sub">From camera or gallery</span>
+          </span>
+        </button>`;
+    } else if (s === 'busy') {
+      photoWrap.innerHTML = `
+        <div class="photo" data-state="busy" aria-busy="true">
+          <span class="photo__box">
+            <svg class="ring" id="ring" viewBox="0 0 44 44"><circle class="ring__bg" cx="22" cy="22" r="19"/><circle class="ring__fg" id="ring-fg" cx="22" cy="22" r="19"/></svg>
+          </span>
+          <span class="photo__text">
+            <span class="photo__title" id="photo-title"></span>
+            <span class="photo__sub">Please wait</span>
+            <span class="photo__actions"><button type="button" class="link" data-act="cancel">Cancel</button></span>
+          </span>
+        </div>`;
+      paintPhoto();
+    } else if (s === 'done') {
+      photoWrap.innerHTML = `
+        <div class="photo" data-state="done">
+          <span class="photo__box"><img src="${esc(safeUrl(photo.url))}" alt="Uploaded photo thumbnail"></span>
+          <span class="photo__text">
+            <span class="photo__title">Photo added</span>
+            <span class="photo__sub">${esc(fmtSize(photo.size))}</span>
+            <span class="photo__actions">
+              <button type="button" class="link" data-act="pick">Change</button>
+              <button type="button" class="link link--danger" data-act="remove">Remove</button>
+            </span>
+          </span>
+        </div>`;
+    } else {
+      photoWrap.innerHTML = `
+        <div class="photo" data-state="error" role="alert">
+          <span class="photo__box">${CAMERA}</span>
+          <span class="photo__text">
+            <span class="photo__title">Couldn’t add the photo</span>
+            <span class="photo__sub">${esc(photo.message)}</span>
+            <span class="photo__actions"><button type="button" class="link" data-act="pick">Try again</button></span>
+          </span>
+        </div>`;
+    }
+    updateSave();
+  }
+
+  // updates the ring and the label without re-rendering (keeps the animation smooth)
+  function paintPhoto() {
+    const title = $('photo-title'), ring = $('ring'), fg = $('ring-fg');
+    if (!title || !ring) return;
+    if (photo.phase === 'upload') {
+      const pct = Math.round(photo.progress * 100);
+      title.textContent = 'Uploading… ' + pct + '%';
+      ring.classList.remove('spin');
+      fg.style.strokeDashoffset = String(119.4 * (1 - photo.progress));
+    } else {
+      title.textContent = photo.phase === 'verify' ? 'Checking photo…' : 'Optimizing photo…';
+      ring.classList.add('spin');
+      fg.style.strokeDashoffset = '';
+    }
+  }
+
+  function setPhoto(patch) { Object.assign(photo, patch); renderPhoto(); }
+
+  function resetPhoto({ deleteRemote }) {
+    photoRun++;
+    if (photo.controller) photo.controller.abort();
+    if (deleteRemote && photo.state === 'done' && photo.id) api.deleteUpload(photo.id).catch(() => {});
+    Object.assign(photo, { state: 'idle', phase: '', progress: 0, id: null, url: '', size: 0, message: '', controller: null });
+    renderPhoto();
+  }
+
+  async function startPhoto(file) {
+    // replacing an already uploaded photo: remove the old one from the server first
+    if (photo.state === 'done' && photo.id) api.deleteUpload(photo.id).catch(() => {});
+    photoRun++;
+    if (photo.controller) photo.controller.abort();
+    const run = photoRun;
+
+    if (!file.type || !file.type.startsWith('image/')) { setPhoto({ state: 'error', message: 'Choose an image file.', id: null }); return; }
+    if (file.size > MAX_INPUT_PHOTO_MB * 1048576) { setPhoto({ state: 'error', message: 'This photo is too large.', id: null }); return; }
+
+    setPhoto({ state: 'busy', phase: 'optimize', progress: 0, id: null, url: '' });
+    try {
+      const blob = await compressImage(file);
+      if (run !== photoRun) return;
+
+      const controller = new AbortController();
+      photo.controller = controller;
+      photo.phase = 'upload'; photo.progress = 0; paintPhoto();
+
+      const res = await api.uploadPhoto(blob, {
+        signal: controller.signal,
+        onProgress: p => { if (run === photoRun) { photo.progress = p; paintPhoto(); } },
+        onSent: () => { if (run === photoRun) { photo.phase = 'verify'; paintPhoto(); } }
+      });
+
+      if (run !== photoRun) { if (res && res.id) api.deleteUpload(res.id).catch(() => {}); return; }
+      setPhoto({ state: 'done', id: String(res.id), url: res.url, size: blob.size, controller: null });
+    } catch (err) {
+      if (run !== photoRun || (err && err.name === 'AbortError')) return;
+      const fallback = (err && err.message === 'decode')
+        ? 'This photo format isn’t supported. Try a JPEG or PNG.'
+        : 'Check your connection and try again.';
+      setPhoto({ state: 'error', message: errorText(err, fallback), id: null, controller: null });
+    }
+  }
+
+  photoWrap.addEventListener('click', e => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'pick') fileInput.click();
+    if (act === 'cancel') resetPhoto({ deleteRemote: false });
+    if (act === 'remove') resetPhoto({ deleteRemote: true });
+  });
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0];
+    fileInput.value = '';
+    if (file) startPhoto(file);
+  });
+
+  /* ---- Ingredient rows with autocomplete ---- */
+  const rows = [];   // [{ key, text, id (linked My Ingredients id or null), amount }]
+  const rowEl = key => ingsEl.querySelector('.ing[data-key="' + key + '"]');
+  const findRow = key => rows.find(r => r.key === key);
+
+  function addRow(focus) {
+    const row = { key: uid(), text: '', id: null, amount: '' };
+    rows.push(row);
+    const el = document.createElement('div');
+    el.className = 'ing';
+    el.dataset.key = row.key;
+    el.innerHTML = `
+      <div class="ing__line">
+        <div class="control ing__name">
+          <input class="ing__text" type="text" maxlength="60" placeholder="Ingredient" autocomplete="off" autocapitalize="sentences" spellcheck="false"
+                 role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="Ingredient name" enterkeyhint="next">
+        </div>
+        <div class="control ing__amount">
+          <input class="ing__qty" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Amount in grams">
+          <span class="affix affix--post">g</span>
+        </div>
+        <button class="ing__remove" type="button" aria-label="Remove ingredient"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+      <ul class="suggest" role="listbox" hidden></ul>
+      <p class="ing__hint" hidden></p>`;
+    ingsEl.appendChild(el);
+    if (focus) el.querySelector('.ing__text').focus();
+    return row;
+  }
+
+  function removeRow(key) {
+    const row = findRow(key), el = rowEl(key);
+    if (!row || !el) return;
+    if (rows.length === 1) {   // keep one empty row instead of an empty list
+      Object.assign(row, { text: '', id: null, amount: '' });
+      el.querySelector('.ing__text').value = '';
+      el.querySelector('.ing__qty').value = '';
+      hideSuggest(row);
+      updateHint(row);
+      return;
+    }
+    rows.splice(rows.indexOf(row), 1);
+    el.remove();
+  }
+
+  const isSuggestOpen = row => { const el = rowEl(row.key); return !!el && !el.querySelector('.suggest').hidden; };
+
+  function hideSuggest(row) {
+    const el = rowEl(row.key);
+    if (!el) return;
+    el.querySelector('.suggest').hidden = true;
+    el.querySelector('.ing__text').setAttribute('aria-expanded', 'false');
+    updateHint(row);
+  }
+
+  function showSuggest(row) {
+    const el = rowEl(row.key);
+    if (!el) return;
+    const list = el.querySelector('.suggest');
+    const q = norm(row.text);
+    let html = '';
+
+    if (ingStatus === 'loading' && !ingredients.length) {
+      html = '<li class="is-note">Loading ingredients…</li>';
+    } else if (ingStatus === 'error' && !ingredients.length) {
+      html = '<li class="is-note" data-act="retry">Couldn’t load ingredients. Tap to retry</li>';
+    } else {
+      const used = new Set(rows.filter(r => r !== row && r.id).map(r => r.id));
+      const matches = ingredients
+        .filter(i => !used.has(i.id) && (!q || norm(i.name).includes(q)))
+        .sort((a, b) =>
+          (norm(a.name).startsWith(q) ? 0 : 1) - (norm(b.name).startsWith(q) ? 0 : 1) ||
+          a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
+        .slice(0, 6);
+
+      html = matches.map(i => `
+        <li role="option" data-act="pick" data-id="${esc(i.id)}">
+          <span>${highlight(i.name, q)}</span>
+          <span class="s-price">${CURRENCY}${money.format(i.price)} / kg</span>
+        </li>`).join('');
+
+      if (q && !findIngredient(row.text)) {
+        html += `<li role="option" class="is-new" data-act="new"><svg class="icon"><use href="#i-plus"/></svg><span>Add “${esc(row.text.trim())}” as new ingredient</span></li>`;
+      }
+      if (!html) html = '<li class="is-note">No ingredients yet. Type a name to add one.</li>';
+    }
+
+    list.innerHTML = html;
+    list.hidden = false;
+    el.querySelector('.ing__text').setAttribute('aria-expanded', 'true');
+    updateHint(row);
+  }
+
+  function updateHint(row) {
+    const el = rowEl(row.key);
+    if (!el) return;
+    const hint = el.querySelector('.ing__hint');
+    const text = row.text.trim();
+    if (!text || isSuggestOpen(row)) { hint.hidden = true; return; }
+    const ing = row.id ? ingById(row.id) : null;
+    hint.innerHTML = ing
+      ? 'In My Ingredients: ' + CURRENCY + money.format(ing.price) + ' / kg'
+      : 'Not in My Ingredients yet. <button type="button" class="link" data-act="new">Add it</button>';
+    hint.hidden = false;
+  }
+
+  function chooseIngredient(row, ing) {
+    const el = rowEl(row.key);
+    row.text = ing.name;
+    row.id = ing.id;
+    el.querySelector('.ing__text').value = ing.name;
+    hideSuggest(row);
+    el.querySelector('.ing__qty').focus();   // next thing to enter is the amount
+  }
+
+  ingsEl.addEventListener('input', e => {
+    const el = e.target.closest('.ing');
+    const row = el && findRow(el.dataset.key);
+    if (!row) return;
+    if (e.target.classList.contains('ing__text')) {
+      row.text = e.target.value;
+      const m = findIngredient(row.text);
+      row.id = m ? m.id : null;
+      showSuggest(row);
+    } else if (e.target.classList.contains('ing__qty')) {
+      row.amount = e.target.value;
+    }
+    errorEl.textContent = '';
+  });
+
+  ingsEl.addEventListener('focusin', e => {
+    if (!e.target.classList.contains('ing__text')) return;
+    const el = e.target.closest('.ing');
+    const row = findRow(el.dataset.key);
+    if (ingStatus === 'error') loadIngredients();
+    showSuggest(row);
+    setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 250);
+  });
+
+  // Closing the suggestion list shifts everything below it. If that happened the moment the input loses focus
+  // (on pointer down), a tap on Save, "Remove" or "Add ingredient" would land on the wrong spot and be lost.
+  // So while a pointer is held down the list is closed only after the pointer is released.
+  let pointerDown = false;
+  let pendingHide = null;
+  const releasePointer = () => {
+    pointerDown = false;
+    if (pendingHide) {
+      const row = pendingHide;
+      pendingHide = null;
+      setTimeout(() => hideSuggest(row), 80);   // the click has already been delivered by then
+    }
+  };
+  document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+  document.addEventListener('pointerup', releasePointer, true);
+  document.addEventListener('pointercancel', releasePointer, true);
+
+  ingsEl.addEventListener('focusout', e => {
+    if (!e.target.classList.contains('ing__text')) return;
+    const row = findRow(e.target.closest('.ing').dataset.key);
+    if (!row) return;
+    if (pointerDown) pendingHide = row; else hideSuggest(row);
+  });
+
+  // keep focus in the input while tapping a suggestion, otherwise the list closes before the tap lands
+  ingsEl.addEventListener('pointerdown', e => { if (e.target.closest('.suggest')) e.preventDefault(); });
+
+  ingsEl.addEventListener('keydown', e => {
+    if (!e.target.classList.contains('ing__text')) return;
+    const el = e.target.closest('.ing');
+    const row = findRow(el.dataset.key);
+    const items = [...el.querySelectorAll('.suggest li[data-act]')];
+    const current = items.findIndex(li => li.classList.contains('is-active'));
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!items.length) return;
+      e.preventDefault();
+      const next = e.key === 'ArrowDown' ? (current + 1) % items.length : (current - 1 + items.length) % items.length;
+      items.forEach((li, i) => li.classList.toggle('is-active', i === next));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (current !== -1) items[current].click();
+      else el.querySelector('.ing__qty').focus();
+    } else if (e.key === 'Escape' && isSuggestOpen(row)) {
+      e.stopPropagation();
+      hideSuggest(row);
+    }
+  });
+
+  ingsEl.addEventListener('click', e => {
+    const el = e.target.closest('.ing');
+    if (!el) return;
+    const row = findRow(el.dataset.key);
+
+    if (e.target.closest('.ing__remove')) { removeRow(row.key); return; }
+
+    const actEl = e.target.closest('[data-act]');
+    if (!actEl) return;
+    const act = actEl.dataset.act;
+
+    if (act === 'pick') {
+      const ing = ingById(actEl.dataset.id);
+      if (ing) chooseIngredient(row, ing);
+    } else if (act === 'new') {
+      openNewIngredient(row);
+    } else if (act === 'retry') {
+      loadIngredients().then(() => showSuggest(row));
+    }
+  });
+
+  $('ing-add').addEventListener('click', () => { haptic(); addRow(true); });
+
+  /* ---- open / close ---- */
+  function openSheet() {
+    lastFocus = document.activeElement;
+    recipeSaved = false;
+    saving = false;
+    errorEl.textContent = '';
+    titleEl.value = '';
+    resetPhoto({ deleteRemote: false });
+    rows.length = 0;
+    ingsEl.innerHTML = '';
+    addRow(false);
+    updateSave();
+    if (ingStatus === 'idle' || ingStatus === 'error') loadIngredients();
+
+    layer.classList.add('open');
+    syncLock();
+    setTimeout(() => sheet.focus({ preventScroll: true }), 60);
+  }
+
+  function closeSheet() {
+    if (saving) return;
+    // an uploaded photo that was never attached to a recipe is removed from the server
+    if (!recipeSaved) resetPhoto({ deleteRemote: true }); else resetPhoto({ deleteRemote: false });
+    layer.classList.remove('open');
+    syncLock();
+    if (document.activeElement && layer.contains(document.activeElement)) document.activeElement.blur();
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+  }
+
+  $('add').addEventListener('click', () => { haptic(); openSheet(); });
+  $('create').addEventListener('click', () => { haptic(); openSheet(); });   // the dock button opens the same sheet
+  $('close').addEventListener('click', closeSheet);
+  $('scrim').addEventListener('click', closeSheet);
+
+  titleEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); const first = ingsEl.querySelector('.ing__text'); if (first) first.focus(); }
+  });
+  titleEl.addEventListener('input', () => { errorEl.textContent = ''; });
+
+  function fail(msg, field) { errorEl.textContent = msg; if (field) field.focus(); }
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (saving || photo.state === 'busy') return;
+
+    const title = titleEl.value.trim();
+    if (!title) return fail('Enter a name for the recipe.', titleEl);
+
+    const items = [];
+    const seen = new Set();
+    for (const row of rows) {
+      const text = row.text.trim();
+      const el = rowEl(row.key);
+      const textInput = el.querySelector('.ing__text'), qtyInput = el.querySelector('.ing__qty');
+
+      if (!text && !row.amount.trim()) continue;   // empty row, ignore
+      if (!text) return fail('Add a name for the ingredient or remove the empty row.', textInput);
+
+      const ing = row.id ? ingById(row.id) : null;
+      if (!ing) return fail('“' + text + '” isn’t in My Ingredients yet. Pick it from the list or add it as a new ingredient.', textInput);
+      if (seen.has(ing.id)) return fail('“' + ing.name + '” is listed twice.', textInput);
+      seen.add(ing.id);
+
+      let amount = null;
+      if (row.amount.trim() !== '') {
+        amount = num(row.amount);
+        if (!isFinite(amount) || amount <= 0) return fail('Enter a valid amount in grams for “' + ing.name + '”.', qtyInput);
+      }
+      items.push({ ingredientId: ing.id, amount });
+    }
+
+    saving = true;
+    updateSave();
+    errorEl.textContent = '';
+    try {
+      const created = await api.createRecipe({
+        title,
+        photoId: photo.state === 'done' ? photo.id : null,
+        ingredients: items
+      });
+      recipes.push(normalizeRecipe(created));
+      recipeSaved = true;
+      saving = false;
+      if (view.query) setQuery(''); else render();
+      haptic('success');
+      closeSheet();
+      toast('Recipe added');
+    } catch (err) {
+      errorEl.textContent = errorText(err, 'Couldn’t save the recipe. Check your connection and try again.');
+    } finally {
+      saving = false;
+      updateSave();
+    }
+  });
+
+  /* ═════════════ New ingredient sheet ═════════════ */
+  const layerIng = $('layer-ing'), sheetIng = $('sheet-ing');
+  const nameN = $('n-name'), weightN = $('n-weight'), paidN = $('n-paid'), priceN = $('n-price'),
+        calcN = $('n-calc'), errorN = $('n-error'), saveN = $('n-save');
+  const ni = { mode: 'pack', unit: 'g', rowKey: null, saving: false };
+  let lastFocusIng = null;
+
+  document.querySelectorAll('.cur-sym').forEach(el => { el.textContent = CURRENCY; });
+
+  function setNiMode(m) {
+    ni.mode = m;
+    $('n-mode').querySelectorAll('.seg__btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+    $('n-pane-pack').hidden = m !== 'pack';
+    $('n-pane-kg').hidden = m !== 'kg';
+    errorN.textContent = '';
+    updateNiCalc();
+  }
+  function setNiUnit(u) {
+    ni.unit = u;
+    $('n-unit').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.unit === u)));
+    updateNiCalc();
+  }
+  function niPerKg() {
+    const grams = num(weightN.value) * (ni.unit === 'kg' ? 1000 : 1);
+    const paid = num(paidN.value);
+    if (!isFinite(grams) || grams <= 0 || !isFinite(paid) || paid < 0) return null;
+    return paid / (grams / 1000);
+  }
+  function updateNiCalc() {
+    const v = niPerKg();
+    calcN.textContent = v === null ? '—' : CURRENCY + money.format(v) + ' / kg';
+  }
+  function updateNiSave() {
+    saveN.disabled = ni.saving;
+    saveN.textContent = ni.saving ? 'Saving…' : 'Save ingredient';
+  }
+
+  function openNewIngredient(row) {
+    lastFocusIng = document.activeElement;
+    ni.rowKey = row.key;
+    ni.saving = false;
+    nameN.value = row.text.trim();
+    weightN.value = ''; paidN.value = ''; priceN.value = '';
+    errorN.textContent = '';
+    setNiUnit('g');
+    setNiMode('pack');
+    updateNiSave();
+
+    layerIng.classList.add('open');
+    syncLock();
+    setTimeout(() => (nameN.value ? weightN : nameN).focus(), 80);
+  }
+
+  function closeNewIngredient() {
+    if (ni.saving) return;
+    layerIng.classList.remove('open');
+    syncLock();
+    if (document.activeElement && layerIng.contains(document.activeElement)) document.activeElement.blur();
+  }
+
+  $('close-ing').addEventListener('click', closeNewIngredient);
+  $('scrim-ing').addEventListener('click', closeNewIngredient);
+  $('n-mode').addEventListener('click', e => {
+    const b = e.target.closest('.seg__btn');
+    if (b && b.dataset.mode !== ni.mode) { haptic(); setNiMode(b.dataset.mode); }
+  });
+  $('n-unit').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b && b.dataset.unit !== ni.unit) { haptic(); setNiUnit(b.dataset.unit); }
+  });
+  [nameN, weightN, paidN, priceN].forEach(el => el.addEventListener('input', () => {
+    errorN.textContent = '';
+    if (el === weightN || el === paidN) updateNiCalc();
+  }));
+  nameN.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); (ni.mode === 'pack' ? weightN : priceN).focus(); }
+  });
+  weightN.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); paidN.focus(); } });
+
+  function failN(msg, field) { errorN.textContent = msg; field.focus(); }
+
+  $('form-ing').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (ni.saving) return;
+
+    const name = nameN.value.trim();
+    if (!name) return failN('Enter a name for the ingredient.', nameN);
+    if (findIngredient(name)) return failN('An ingredient with this name already exists. Pick it from the list instead.', nameN);
+
+    let price, weight = null, paid = null;
+    if (ni.mode === 'pack') {
+      const w = num(weightN.value), p = num(paidN.value);
+      if (!isFinite(w) || w <= 0) return failN('Enter the weight you bought, for example 500.', weightN);
+      if (!isFinite(p) || p < 0) return failN('Enter the amount you paid, for example 4.50.', paidN);
+      weight = w * (ni.unit === 'kg' ? 1000 : 1);
+      paid = Math.round(p * 100) / 100;
+      price = paid / (weight / 1000);
+    } else {
+      price = num(priceN.value);
+      if (!isFinite(price) || price < 0) return failN('Enter a valid price per kg, for example 4.50.', priceN);
+    }
+    if (price > 1000000) return failN('That price looks too high. Check the numbers.', ni.mode === 'pack' ? weightN : priceN);
+
+    ni.saving = true;
+    updateNiSave();
+    try {
+      const created = normalizeIngredient(await api.createIngredient({ name, price: Math.round(price * 100) / 100, weight, paid }));
+      ingredients.push(created);
+      ni.saving = false;
+      haptic('success');
+      closeNewIngredient();
+
+      // link the row that asked for this ingredient and refresh every hint
+      const row = findRow(ni.rowKey);
+      if (row && rowEl(row.key)) {
+        row.text = created.name;
+        row.id = created.id;
+        rowEl(row.key).querySelector('.ing__text').value = created.name;
+        hideSuggest(row);
+        setTimeout(() => rowEl(row.key) && rowEl(row.key).querySelector('.ing__qty').focus(), 320);
+      }
+      rows.forEach(updateHint);
+    } catch (err) {
+      errorN.textContent = errorText(err, 'Couldn’t save the ingredient. Check your connection and try again.');
+    } finally {
+      ni.saving = false;
+      updateNiSave();
+    }
+  });
+
+  /* ═════════════ Shared: Esc key, bottom navigation ═════════════ */
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (layerIng.classList.contains('open')) closeNewIngredient();
+    else if (layer.classList.contains('open')) closeSheet();
+  });
+
+  document.querySelectorAll('.dock__item').forEach(btn => btn.addEventListener('click', () => {
+    haptic();
+    if (btn.dataset.href) { window.location.href = btn.dataset.href; return; }
+    document.dispatchEvent(new CustomEvent('app:view', { detail: { view: btn.dataset.view } }));
+  }));
+
+  /* ═════════════ Start ═════════════ */
+  renderPhoto();
+  loadRecipes();
+  loadIngredients();
+
+  // other pages send the user here with ?new=1 when they tap "Create" in the dock
+  try {
+    if (new URLSearchParams(window.location.search).has('new')) {
+      history.replaceState(null, '', window.location.pathname);
+      openSheet();
+    }
+  } catch (_) {}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#F3F4F2">
+<title>Recipes</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Telegram Mini Apps SDK (на обычной веб-странице просто игнорируется) -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  /* ───────────── Tokens ───────────── */
+  :root {
+    --bg:          #F3F4F2;
+    --surface:     #FFFFFF;
+    --ink:         #1B2421;
+    --ink-soft:    #3B4743;
+    --muted:       #6C7773;
+    --line:        #E2E5E1;
+    --line-strong: #C9CEC9;
+    --accent:      #2E5E4E;
+    --accent-ink:  #FFFFFF;
+    --accent-soft: #E3EDE8;
+
+    --font: "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    --page-pad: 16px;
+    --nav-h: 64px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* ───────────── Base ───────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .icon {
+    width: 24px; height: 24px;
+    fill: none; stroke: currentColor;
+    stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+    flex: none;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: calc(var(--safe-top) + 20px) var(--page-pad)
+             calc(var(--nav-h) + var(--safe-bottom) + 40px);
+  }
+
+  /* ───────────── Header ───────────── */
+  .hello h1 {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .hello p {
+    margin: 6px 0 0;
+    color: var(--muted);
+  }
+
+  /* ───────────── 1. Navigation grid ───────────── */
+  .quick {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    min-height: 104px;
+    padding: 14px 14px 14px;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    transition: border-color .18s ease, transform .12s ease;
+  }
+  .tile__icon {
+    display: grid; place-items: center;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .tile__label {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .tile:active { transform: scale(.98); }
+
+  /* ───────────── 2. Recipes ───────────── */
+  .recipes { margin-top: 32px; }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-head h2 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .section-head span { color: var(--muted); font-size: 13px; }
+
+  /* карусель фильтров */
+  .chips {
+    display: flex;
+    gap: 8px;
+    margin: 0 calc(var(--page-pad) * -1);
+    padding: 2px var(--page-pad) 6px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding: 0 var(--page-pad);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--page-pad), #000 calc(100% - 28px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 var(--page-pad), #000 calc(100% - 28px), transparent 100%);
+  }
+  .chips::-webkit-scrollbar { display: none; }
+
+  .chip {
+    flex: none;
+    scroll-snap-align: start;
+    height: 38px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    user-select: none;
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .12s ease;
+  }
+  .chip:active { transform: scale(.97); }
+  .chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+
+  /* карточки рецептов: одинаковый фиксированный размер.
+     По умолчанию — лаконичная текстовая карточка. Если у рецепта задано фото (img),
+     карточка получает модификатор .card--photo: фото на всю карточку и светлый текст. */
+  .grid {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 160px;
+    gap: 12px;
+  }
+
+  .card {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 160px;
+    padding: 14px;
+    overflow: hidden;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    transition: border-color .18s ease, transform .12s ease;
+  }
+  .card:active { transform: scale(.985); }
+
+  .card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .card__mark {
+    display: grid; place-items: center;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .card__title {
+    margin: 0 0 6px;
+    font-size: 15px;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  .card__meta .time { display: inline-flex; align-items: center; gap: 5px; }
+  .card__meta .icon { width: 14px; height: 14px; stroke-width: 1.8; }
+
+  .fav {
+    display: grid; place-items: center;
+    width: 34px; height: 34px;
+    margin: -4px -4px 0 auto;
+    border-radius: 50%;
+    color: var(--muted);
+    transition: color .15s ease, transform .12s ease, background-color .15s ease;
+  }
+  .fav .icon { width: 18px; height: 18px; }
+  .fav:active { transform: scale(.9); }
+  .fav[aria-pressed="true"] { color: var(--accent); }
+  .fav[aria-pressed="true"] .icon { fill: currentColor; }
+
+  /* вариант с фото (необязательный) */
+  .card__photo {
+    position: absolute; inset: 0; z-index: -2;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .card__shade {
+    position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(180deg, rgba(27, 36, 33, .22) 0%, rgba(27, 36, 33, 0) 40%, rgba(27, 36, 33, .78) 100%);
+  }
+  .card--photo { border-color: transparent; background: var(--ink); color: #fff; }
+  .card--photo .card__mark { display: none; }
+  .card--photo .card__meta { color: rgba(255, 255, 255, .85); }
+  .card--photo .fav { background: rgba(255, 255, 255, .9); color: var(--ink-soft); }
+  .card--photo .fav[aria-pressed="true"] { color: var(--accent); }
+  .card:not(.card--photo) .card__photo,
+  .card:not(.card--photo) .card__shade { display: none; }
+
+  .empty {
+    grid-column: 1 / -1;
+    align-self: start;
+    padding: 28px 8px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .empty strong { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 600; }
+
+  /* ───────────── 3. Bottom navigation ───────────── */
+  .dock {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--safe-bottom) + 12px);
+    transform: translateX(-50%);
+    z-index: 10;
+    width: min(calc(100% - 32px), 400px);
+    height: var(--nav-h);
+    padding: 6px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, .92);
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+            backdrop-filter: saturate(1.4) blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: 0 10px 30px -12px rgba(27, 36, 33, .28);
+  }
+
+  .dock__item {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 500;
+    transition: background-color .18s ease, color .18s ease;
+  }
+  .dock__item .icon { width: 22px; height: 22px; }
+  .dock__item[aria-current="page"] { background: var(--bg); color: var(--ink); }
+
+  .dock__create {
+    height: 100%;
+    padding: 0 22px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    transition: transform .12s ease, background-color .18s ease;
+  }
+  .dock__create .icon { width: 22px; height: 22px; stroke-width: 2; }
+  .dock__create:active { transform: scale(.96); }
+
+  /* hover — только там, где есть мышь (не залипает на тач-экранах) */
+  @media (hover: hover) {
+    .tile:hover { border-color: var(--line-strong); }
+    .chip:hover:not([aria-pressed="true"]) { border-color: var(--line-strong); background: #FAFBFA; color: var(--ink); }
+    .chip[aria-pressed="true"]:hover { background: var(--ink-soft); border-color: var(--ink-soft); }
+    .card:hover { border-color: var(--line-strong); }
+    .fav:hover { color: var(--accent); }
+    .dock__item:not([aria-current="page"]):hover { background: rgba(27, 36, 33, .05); color: var(--ink); }
+    .dock__create:hover { background: #264F42; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ───────────── Спрайт иконок (линейные, 24×24, единая толщина штриха) ───────────── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-carrot" viewBox="0 0 24 24">
+      <path d="M2.27 21.7s9.87-3.5 12.73-6.36a4.5 4.5 0 0 0-6.36-6.37C5.77 11.84 2.27 21.7 2.27 21.7z"/>
+      <path d="M8.64 14l-2.05-2.04M15.34 15l-2.46-2.46"/>
+      <path d="M22 9s-1.33-2-3.5-2C16.86 7 15 9 15 9s1.33 2 3.5 2S22 9 22 9z"/>
+      <path d="M15 2s-2 1.33-2 3.5S15 9 15 9s2-1.84 2-3.5C17 3.33 15 2 15 2z"/>
+    </symbol>
+    <symbol id="i-book" viewBox="0 0 24 24">
+      <path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/>
+      <path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/>
+    </symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24">
+      <rect x="4" y="2" width="16" height="20" rx="3"/>
+      <path d="M8 6h8"/>
+      <path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+    </symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24">
+      <rect x="8" y="2" width="8" height="4" rx="1"/>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+      <path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>
+    </symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24">
+      <path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/>
+      <path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/>
+    </symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24">
+      <path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3"/>
+      <path d="M14 2v4M8 10v4M16 18v4"/>
+    </symbol>
+    <symbol id="i-home" viewBox="0 0 24 24">
+      <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+      <path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path d="M5 12h14M12 5v14"/>
+    </symbol>
+    <symbol id="i-user" viewBox="0 0 24 24">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/>
+    </symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 7v5l3 2"/>
+    </symbol>
+    <symbol id="i-dish" viewBox="0 0 24 24">
+      <path d="M3 14h18a9 9 0 0 1-18 0z"/>
+      <path d="M12 5v2M8 7l.8 1.4M16 7l-.8 1.4"/>
+    </symbol>
+  </defs>
+</svg>
+
+<main class="app">
+
+  <!-- Приветствие -->
+  <header class="hello">
+    <h1 id="greeting">Hello</h1>
+    <p>What are we cooking today?</p>
+  </header>
+
+  <!-- 1. Навигация по основным возможностям -->
+  <nav class="quick" aria-label="Sections">
+    <button class="tile" data-section="ingredients">
+      <span class="tile__icon"><svg class="icon"><use href="#i-carrot"/></svg></span>
+      <span class="tile__label">My Ingredients</span>
+    </button>
+    <button class="tile" data-section="recipes">
+      <span class="tile__icon"><svg class="icon"><use href="#i-book"/></svg></span>
+      <span class="tile__label">My Recipes</span>
+    </button>
+    <button class="tile" data-section="calculator">
+      <span class="tile__icon"><svg class="icon"><use href="#i-calc"/></svg></span>
+      <span class="tile__label">Calculator</span>
+    </button>
+    <button class="tile" data-section="tech-cards">
+      <span class="tile__icon"><svg class="icon"><use href="#i-clipboard"/></svg></span>
+      <span class="tile__label">Tech Cards</span>
+    </button>
+    <button class="tile" data-section="assistant">
+      <span class="tile__icon"><svg class="icon"><use href="#i-sparkles"/></svg></span>
+      <span class="tile__label">AI Assistant</span>
+    </button>
+    <button class="tile" data-section="settings">
+      <span class="tile__icon"><svg class="icon"><use href="#i-sliders"/></svg></span>
+      <span class="tile__label">Settings</span>
+    </button>
+  </nav>
+
+  <!-- 2. Рецепты -->
+  <section class="recipes" aria-labelledby="recipes-title">
+    <div class="section-head">
+      <h2 id="recipes-title">Recipes</h2>
+      <span id="recipes-count"></span>
+    </div>
+
+    <!-- 2.1 Карусель фильтров -->
+    <div class="chips" id="chips" role="group" aria-label="Recipe filters"></div>
+
+    <!-- 2.2 Список рецептов -->
+    <div class="grid" id="grid" aria-live="polite"></div>
+  </section>
+
+</main>
+
+<!-- 3. Нижняя навигация -->
+<nav class="dock" aria-label="Main menu">
+  <button class="dock__item" data-view="home" aria-current="page">
+    <svg class="icon"><use href="#i-home"/></svg>
+    <span>Home</span>
+  </button>
+
+  <button class="dock__create" id="create">
+    <svg class="icon"><use href="#i-plus"/></svg>
+    <span>Create</span>
+  </button>
+
+  <button class="dock__item" data-view="profile">
+    <svg class="icon"><use href="#i-user"/></svg>
+    <span>Profile</span>
+  </button>
+</nav>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ───────────── Telegram ───────────── */
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) {
+    try {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor && tg.setHeaderColor('#F3F4F2');
+      tg.setBackgroundColor && tg.setBackgroundColor('#F3F4F2');
+    } catch (_) { /* не критично */ }
+
+    const name = tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name;
+    if (name) document.getElementById('greeting').textContent = 'Hello, ' + name;
+  }
+  const haptic = () => { try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch (_) {} };
+
+  /* ───────────── Данные (временные — позже придут с бэкенда) ───────────── */
+  const FILTERS = ['All', 'Favorites', 'Dietary', 'High-protein', 'Tasteless', 'Decent', 'Damn awful', 'Beer snacks', 'Tipsy cooking'];
+
+  // Поле img (URL фото) необязательное: позже его сможет задать пользователь в разделе My Recipes.
+  // Без него карточка остаётся текстовой.
+  const recipes = [
+    { id: 1, title: 'Chicken breast with vegetables',     time: 30, kcal: 420, tags: ['Dietary', 'High-protein', 'Decent'], fav: true,  img: '' },
+    { id: 2, title: 'Classic borscht',            time: 90, kcal: 360, tags: ['Decent'],                            fav: false, img: '' },
+    { id: 3, title: 'Honey-glazed wings',     time: 45, kcal: 610, tags: ['Beer snacks', 'High-protein'],                  fav: true,  img: '' },
+    { id: 4, title: 'Cottage cheese casserole',          time: 50, kcal: 280, tags: ['Dietary', 'High-protein'],               fav: false, img: '' },
+    { id: 5, title: 'Plain oatmeal, no salt',     time: 10, kcal: 150, tags: ['Tasteless', 'Dietary'],              fav: false, img: '' },
+    { id: 6, title: 'Garlic croutons',             time: 15, kcal: 330, tags: ['Tipsy cooking', 'Beer snacks'],                 fav: false, img: '' },
+    { id: 7, title: 'Tuna pasta',               time: 25, kcal: 520, tags: ['Decent', 'High-protein'],                fav: false, img: '' },
+    { id: 8, title: 'Pilaf, third attempt',       time: 120, kcal: 680, tags: ['Damn awful'],                               fav: false, img: '' }
+  ];
+
+  /* ───────────── Состояние ───────────── */
+  const state = { filter: 'All' };
+
+  const chipsEl = document.getElementById('chips');
+  const gridEl  = document.getElementById('grid');
+  const countEl = document.getElementById('recipes-count');
+
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+  const plural = (n, one, many) => (n === 1 ? one : many);
+
+  /* ───────────── Фильтры ───────────── */
+  function renderChips() {
+    chipsEl.innerHTML = FILTERS.map(f =>
+      `<button class="chip" type="button" data-filter="${esc(f)}" aria-pressed="${f === state.filter}">${esc(f)}</button>`
+    ).join('');
+  }
+
+  chipsEl.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    state.filter = chip.dataset.filter;
+    chipsEl.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === chip)));
+    chip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    haptic();
+    renderRecipes();
+  });
+
+  /* ───────────── Рецепты ───────────── */
+  function visibleRecipes() {
+    if (state.filter === 'All') return recipes;
+    if (state.filter === 'Favorites') return recipes.filter(r => r.fav);
+    return recipes.filter(r => r.tags.includes(state.filter));
+  }
+
+  function cardHTML(r) {
+    const photo = r.img
+      ? `<img class="card__photo" src="${esc(r.img)}" alt="" loading="lazy" decoding="async"><span class="card__shade"></span>`
+      : '';
+    return `
+      <article class="card${r.img ? ' card--photo' : ''}" data-id="${r.id}" tabindex="0">
+        ${photo}
+        <div class="card__top">
+          <span class="card__mark" aria-hidden="true"><svg class="icon"><use href="#i-dish"/></svg></span>
+          <button class="fav" type="button" data-fav="${r.id}" aria-pressed="${r.fav}" aria-label="Add to favorites">
+            <svg class="icon"><use href="#i-heart"/></svg>
+          </button>
+        </div>
+        <div class="card__body">
+          <h3 class="card__title">${esc(r.title)}</h3>
+          <div class="card__meta">
+            <span class="time"><svg class="icon"><use href="#i-clock"/></svg>${esc(r.time)} min</span>
+            <span>${esc(r.kcal)} kcal</span>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  // если фото не загрузилось, карточка тихо возвращается к текстовому виду
+  gridEl.addEventListener('error', e => {
+    const img = e.target;
+    if (!img.classList || !img.classList.contains('card__photo')) return;
+    const card = img.closest('.card');
+    if (card) card.classList.remove('card--photo');
+    img.remove();
+  }, true);
+
+  function renderRecipes() {
+    const list = visibleRecipes();
+    countEl.textContent = list.length + ' ' + plural(list.length, 'recipe', 'recipes');
+    gridEl.innerHTML = list.length
+      ? list.map(cardHTML).join('')
+      : `<div class="empty"><strong>Nothing here yet</strong>There are no recipes in this category. Tap “Create” to add one.</div>`;
+  }
+
+  gridEl.addEventListener('click', e => {
+    const favBtn = e.target.closest('[data-fav]');
+    if (favBtn) {
+      const r = recipes.find(x => x.id === Number(favBtn.dataset.fav));
+      if (r) {
+        r.fav = !r.fav;
+        haptic();
+        // TODO: отправить на бэкенд, напр. fetch('/api/recipes/' + r.id + '/favorite', …)
+        renderRecipes();
+      }
+      return;
+    }
+    const card = e.target.closest('.card');
+    if (card) emit('recipe:open', { id: Number(card.dataset.id) });
+  });
+
+  /* ───────────── Навигация: точки входа для будущей логики ───────────── */
+  function emit(name, detail) {
+    document.dispatchEvent(new CustomEvent('app:' + name, { detail }));
+  }
+
+  // 6 разделов. Готовые страницы открываются переходом, остальные пока только шлют событие.
+  const PAGES = { ingredients: 'ingredients.html', recipes: 'recipes.html' };
+  document.querySelector('.quick').addEventListener('click', e => {
+    const tile = e.target.closest('.tile');
+    if (!tile) return;
+    haptic();
+    const page = PAGES[tile.dataset.section];
+    if (page) { window.location.href = page; return; }
+    emit('navigate', { section: tile.dataset.section });
+  });
+
+  // нижнее меню: «Главная» и «Профиль» переключаются, «Создать» — действие
+  const dockItems = document.querySelectorAll('.dock__item');
+  dockItems.forEach(btn => btn.addEventListener('click', () => {
+    dockItems.forEach(b => b.removeAttribute('aria-current'));
+    btn.setAttribute('aria-current', 'page');
+    haptic();
+    emit('view', { view: btn.dataset.view });
+  }));
+  // «Create» открывает форму создания рецепта (recipes.html сам откроет её по параметру ?new=1)
+  document.getElementById('create').addEventListener('click', () => { haptic(); window.location.href = 'recipes.html?new=1'; });
+
+  // Пример подписки (замените на свою логику):
+  // document.addEventListener('app:navigate', e => console.log(e.detail.section));
+
+  /* ───────────── Старт ───────────── */
+  renderChips();
+  renderRecipes();
+})();
+</script>
+</body>
+</html>
